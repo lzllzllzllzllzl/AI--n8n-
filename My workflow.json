@@ -1,0 +1,169 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            },
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "eb5501a5-bab1-424f-a0f6-46146f598e83",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是我的专属AI助理“新闻报通”！你的使命是帮我洞察最新的AI动态，并结合我的工作日程，智能推荐感兴趣的内容和安排行程。在没有行业大事发生时，你也会关心我的生活，推荐放松娱乐活动。\n最终你需要将所有分析和建议，整合为一个适合在飞书卡片中展示的Markdown格式文本块。保持乐观、敏锐、有创造力！\n\n我有两个核心工具供你调遣：\n1. news：抓取过去2天内飞书多维表格里最新的AI新闻，返回：标题、发布日期、媒体、核心内容、原文链接。\n2. daily：查看我未来7天的飞书日程，返回：日期、时间、事件标题。\n\n你的执行步骤：\n第一步：必须先调用 news 获取最新AI新闻\n第二步：必须再调用 daily 获取未来7天日程\n第三步：只输出【纯Markdown】，不要任何解释、不要代码块、不要格式说明，直接输出最终内容\n\n最终输出格式（严格按照这个结构，用真实数据填充）：\n\n### 🚀 AI圈今日速递与专属建议\n**🌟 今日AI新闻看板：**\n- **标题：** [新闻标题]\n  发布：[日期] | [媒体]\n  摘要：[内容]\n  链接：[原文链接]\n\n**📅 未来7天日程预览：**\n- [日期时间] [事件标题]\n\n**💡 专属智能建议：**\n[结合新闻+日程给我的建议]",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "49c68b83-a31b-46cc-952a-159405822459",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        96,
+        192
+      ],
+      "id": "7102cbc8-020a-48d6-9a9f-f30a8cce62be",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fyMnr8O2qjViJjE5",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "feishuOauth2Api",
+        "resource": "bitable",
+        "operation": "bitable:table:record:search",
+        "app_toke": "Zhm6wRjKHiBJCokPoYBcyEK6nNf",
+        "table_id": "tbl3bbC4kxM8hHCe",
+        "body": "{\n  \"filter\": {\n    \"conjunction\": \"or\",\n    \"conditions\": [\n      {\n        \"field_name\": \"创建时间\",\n        \"operator\": \"is\",\n        \"value\": [\"Today\"]\n      },\n      {\n        \"field_name\": \"创建时间\",\n        \"operator\": \"is\",\n        \"value\": [\"Yesterday\"]\n      }\n    ]\n  }\n}"
+      },
+      "type": "n8n-nodes-feishu-lite.feishuNodeTool",
+      "typeVersion": 1,
+      "position": [
+        304,
+        256
+      ],
+      "id": "2be8570f-85c6-4124-9f31-9258f19c9e7b",
+      "name": "Bitable:table:record:search bitable in Feishu Node",
+      "credentials": {
+        "feishuOauth2Api": {
+          "id": "RXBaUL4WUwrGxvoe",
+          "name": "Feishu account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.feishu.cn/open-apis/bot/v2/hook/6b7a9555-7f19-40ab-9cfd-aaaab5dfcdae",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"msg_type\": \"interactive\",\n  \"card\": {\n    \"schema\": \"2.0\",\n    \"config\": {\n      \"update_multi\": true,\n      \"style\": {\n        \"text_size\": {\n          \"normal_v2\": {\n            \"default\": \"normal\",\n            \"pc\": \"normal\",\n            \"mobile\": \"heading\"\n          }\n        }\n      }\n    },\n    \"body\": {\n      \"direction\": \"vertical\",\n      \"padding\": \"12px 12px 12px 12px\",\n      \"elements\": [\n        {\n          \"tag\": \"markdown\",\n          \"content\": \"{{ $json.output ? JSON.stringify($json.output).slice(1, -1) : '' }}\",\n          \"text_align\": \"left\",\n          \"text_size\": \"normal_v2\",\n          \"margin\": \"0px 0px 0px 0px\"\n        }\n      ]\n    },\n    \"header\": {\n      \"title\": {\n        \"tag\": \"plain_text\",\n        \"content\": \"AI News\"\n      },\n      \"subtitle\": {\n        \"tag\": \"plain_text\",\n        \"content\": \"\"\n      },\n      \"template\": \"blue\",\n      \"padding\": \"12px 12px 12px 12px\"\n    }\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        576,
+        -16
+      ],
+      "id": "e86f46a7-3c3b-48b7-bb3a-d30e3f30674c",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bitable:table:record:search bitable in Feishu Node": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "55636253-f146-46c9-9944-057ee8298482",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0239348e9edf7ed31cfc17376721efa9ad4ffa73da1ca9ac197ddaee1ee94e9b"
+  },
+  "id": "91saFrMOyMdV2qFu",
+  "tags": []
+}
