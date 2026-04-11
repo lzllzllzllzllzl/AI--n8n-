@@ -1,0 +1,562 @@
+{
+  "name": "AI新闻采集+推送飞书群（合并版）",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        3792,
+        1600
+      ],
+      "id": "11c6f089-babb-465d-993e-6830420a1a3e",
+      "name": "早晨定时触发(7点)"
+    },
+    {
+      "parameters": {
+        "url": "https://plink.anyfeeder.com/weixin/AI_era",
+        "options": {
+          "ignoreSSL": true
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        4032,
+        1392
+      ],
+      "id": "4062d838-a9f9-4c7a-920f-29232775eb5d",
+      "name": "新智元RSS"
+    },
+    {
+      "parameters": {
+        "url": "https://36kr.com/feed",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        4032,
+        1600
+      ],
+      "id": "e17c5677-bddb-4a87-aba2-41e891507aca",
+      "name": "36氪RSS"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-title-xzy",
+              "name": "标题",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "field-content-xzy",
+              "name": "内容",
+              "value": "={{ $json['content:encodedSnippet'] || $json.content || $json.description || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-date-xzy",
+              "name": "日期",
+              "value": "={{ $json.pubDate || $json.isoDate || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-link-xzy",
+              "name": "链接",
+              "value": "={{ $json.link || $json.guid || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-media-xzy",
+              "name": "媒体",
+              "value": "新智元",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4272,
+        1392
+      ],
+      "id": "d490dfac-45c0-42d8-b69b-6f11bd4cf51f",
+      "name": "整理字段-新智元"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-title-jqzx",
+              "name": "标题",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "field-content-jqzx",
+              "name": "内容",
+              "value": "={{ $json['content:encodedSnippet'] || $json.content || $json.description || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-date-jqzx",
+              "name": "日期",
+              "value": "={{ $json.pubDate || $json.isoDate || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-link-jqzx",
+              "name": "链接",
+              "value": "={{ $json.link || $json.guid || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-media-jqzx",
+              "name": "媒体",
+              "value": "36氪",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4272,
+        1600
+      ],
+      "id": "ccd8728f-e249-4be5-95be-bff3e5c511f1",
+      "name": "整理字段-36氪"
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        4512,
+        1392
+      ],
+      "id": "12c2c429-719c-49c1-b8c3-27e6d88dd883",
+      "name": "限制条数-新智元"
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        4512,
+        1600
+      ],
+      "id": "ec800cef-8c3b-416a-893b-0f6bacef5b98",
+      "name": "限制条数-36氪"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是一个AI新闻结构化提取工具。\n你的唯一任务：把输入的AI新闻内容，提取并转换为严格符合要求的JSON格式。\n绝对不能输出任何解释、任何Markdown、任何多余文字，只返回纯JSON。\n\n【严格输出规则】\n1. 只返回一个JSON对象，不要任何其他内容\n2. 必须包含以下5个字段，缺一不可：\n   - \"标题\"：新闻标题（字符串）\n   - \"日期\"：新闻发布日期（字符串，格式YYYY-MM-DD）\n   - \"内容\"：新闻核心摘要（字符串，精简提炼，100字以内）\n   - \"媒体\"：发布媒体（字符串）\n   - \"链接\"：原文链接（字符串）\n3. 严格遵守JSON语法：双引号、逗号、括号完全正确，无语法错误\n4. 绝对不能加```json、不能加解释、不能加任何非JSON内容\n\n【示例JSON（严格按照此结构，用真实数据填充）】\n{\n  \"标题\": \"OpenAI发布GPT-4o最新更新\",\n  \"日期\": \"2026-04-05\",\n  \"内容\": \"OpenAI正式推出GPT-4o，支持实时语音视频对话，响应速度提升2倍\",\n  \"媒体\": \"量子位\",\n  \"链接\": \"https://www.qbitai.com/2026/04/xxxxx.html\"\n}\n\n【输入新闻内容】\n标题：{{ $json['标题'] }}\n媒体：{{ $json['媒体'] }}\n日期：{{ $json['日期'] }}\n链接：{{ $json['链接'] }}\n内容：{{ $json['内容'] }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5040,
+        1696
+      ],
+      "id": "5dcc0dbd-4d4d-475a-a95e-cea0cd3d9350",
+      "name": "LLM结构化新闻"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "doubao-seed-1-6-lite-251015",
+          "mode": "id"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        5040,
+        1952
+      ],
+      "id": "3929c050-1698-4a44-9a27-7f2408483117",
+      "name": "豆包模型(结构化)",
+      "credentials": {
+        "openAiApi": {
+          "id": "TfkUfmrnnZF8Sm8J",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "feishuOauth2Api",
+        "resource": "bitable",
+        "operation": "bitable:table:record:add",
+        "app_toke": "Zhm6wRjKHiBJCokPoYBcyEK6nNf",
+        "table_id": "tbl3bbC4kxM8hHCe",
+        "body": "={{ JSON.stringify({ fields: { \"标题\": $json['标题'], \"日期\": $json['日期_ts'], \"创建时间\": $json['采集时间'], \"内容\": $json['内容'], \"媒体\": $json['媒体'], \"链接\": { text: \"查看原文\", link: $json['链接'] } } }) }}"
+      },
+      "type": "n8n-nodes-feishu-lite.feishuNode",
+      "typeVersion": 1,
+      "position": [
+        5312,
+        1696
+      ],
+      "id": "63c2d7c6-6441-44d7-8e4f-ce6ccb0cb57c",
+      "name": "写入飞书多维表格",
+      "credentials": {
+        "feishuOauth2Api": {
+          "id": "RXBaUL4WUwrGxvoe",
+          "name": "Feishu account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.feishu.cn/open-apis/bot/v2/hook/6b7a9555-7f19-40ab-9cfd-aaaab5dfcdae",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"msg_type\": \"interactive\",\n  \"card\": {\n    \"schema\": \"2.0\",\n    \"config\": {\n      \"update_multi\": true,\n      \"style\": {\n        \"text_size\": {\n          \"normal_v2\": {\n            \"default\": \"normal\",\n            \"pc\": \"normal\",\n            \"mobile\": \"heading\"\n          }\n        }\n      }\n    },\n    \"body\": {\n      \"direction\": \"vertical\",\n      \"padding\": \"12px 12px 12px 12px\",\n      \"elements\": [\n        {\n          \"tag\": \"markdown\",\n          \"content\": {{ JSON.stringify($json.output || '') }},\n          \"text_align\": \"left\",\n          \"text_size\": \"normal_v2\",\n          \"margin\": \"0px 0px 0px 0px\"\n        }\n      ]\n    },\n    \"header\": {\n      \"title\": {\n        \"tag\": \"plain_text\",\n        \"content\": \"🤖 AI今日速递\"\n      },\n      \"subtitle\": {\n        \"tag\": \"plain_text\",\n        \"content\": \"每日AI新闻汇总\"\n      },\n      \"template\": \"blue\",\n      \"padding\": \"12px 12px 12px 12px\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        6320,
+        1696
+      ],
+      "id": "e2ba1725-8d1f-4a0f-b136-96586355c1dc",
+      "name": "发送飞书群消息"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $input.item.json.text || '';\nlet parsed = {};\ntry {\n  const cleaned = raw.replace(/```json\\s*/gi, '').replace(/```\\s*/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch(e) {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  if (match) { try { parsed = JSON.parse(match[0]); } catch(e2) {} }\n}\nconst dateStr = String(parsed['日期'] || parsed.date || '');\nlet dateTs = Date.now();\nif (dateStr) { const d = new Date(dateStr); if (!isNaN(d.getTime())) dateTs = d.getTime(); }\nreturn { json: { '标题': String(parsed['标题'] || '无标题'), '日期_ts': dateTs, '采集时间': Date.now(), '内容': String(parsed['内容'] || ''), '媒体': String(parsed['媒体'] || '未知媒体'), '链接': String(parsed['链接'] || '') } };"
+      },
+      "id": "code-parse-json",
+      "name": "解析LLM输出JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5184,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是一个AI新闻结构化提取工具。\n你的唯一任务：把输入的AI新闻内容，提取并转换为严格符合要求的JSON格式。绝对不能输出任何解释、任何Markdown、任何多余文字，只返回绯JSON。\n只返回包含「标题」「日期」「内容」「媒体」「链接」共5个字段的JSON对象。\n「日期」格式YYYY-MM-DD。「内容」100字以内摘要。\n不加任何其他内容。\n【输入】\n标题：{{ $json['标题'] }}\n媒体：{{ $json['媒体'] }}\n日期：{{ $json['日期'] }}\n链接：{{ $json['链接'] }}\n内容：{{ $json['内容'] }}",
+        "batching": {}
+      },
+      "id": "llm-36kr",
+      "name": "LLM结构化-36氪",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5040,
+        1600
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "doubao-seed-1-6-lite-251015"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "llm-model-36kr",
+      "name": "豆包模型-36氪",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        4864,
+        1792
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "TfkUfmrnnZF8Sm8J",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $input.item.json.text || '';\nlet parsed = {};\ntry {\n  const cleaned = raw.replace(/```json\\s*/gi, '').replace(/```\\s*/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch(e) {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  if (match) { try { parsed = JSON.parse(match[0]); } catch(e2) {} }\n}\nconst dateStr = String(parsed['\\u65e5\\u671f'] || parsed.date || '');\nlet dateTs = Date.now();\nif (dateStr) { const d = new Date(dateStr); if (!isNaN(d.getTime())) dateTs = d.getTime(); }\nreturn { json: { '\\u6807\\u9898': String(parsed['\\u6807\\u9898'] || '\\u65e0\\u6807\\u9898'), '\\u65e5\\u671f_ts': dateTs, '\\u91c7\\u96c6\\u65f6\\u95f4': Date.now(), '\\u5185\\u5bb9': String(parsed['\\u5185\\u5bb9'] || ''), '\\u5a92\\u4f53': String(parsed['\\u5a92\\u4f53'] || '\\u672a\\u77e5\\u5a92\\u4f53'), '\\u94fe\\u63a5': String(parsed['\\u94fe\\u63a5'] || '') } };"
+      },
+      "id": "code-36kr",
+      "name": "解析JSON-36氪",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5280,
+        1600
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "feishuOauth2Api",
+        "resource": "bitable",
+        "operation": "bitable:table:record:add",
+        "app_toke": "Zhm6wRjKHiBJCokPoYBcyEK6nNf",
+        "table_id": "tbl3bbC4kxM8hHCe",
+        "body": "={{ JSON.stringify({ fields: { \"标题\": $json['标题'], \"日期\": $json['日期_ts'], \"创建时间\": $json['采集时间'], \"内容\": $json['内容'], \"媒体\": $json['媒体'], \"链接\": { text: \"查看原文\", link: $json['链接'] } } }) }}"
+      },
+      "id": "feishu-36kr",
+      "name": "写入飞书-36氪",
+      "type": "n8n-nodes-feishu-lite.feishuNode",
+      "typeVersion": 1,
+      "position": [
+        5520,
+        1600
+      ],
+      "credentials": {
+        "feishuOauth2Api": {
+          "id": "RXBaUL4WUwrGxvoe",
+          "name": "Feishu account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 生成AI新闻日报\nconst today = new Date().toISOString().split('T')[0];\nconst report = `### 🚀 AI圈今日速递\n**🌟 今日AI新闻：**\n\n- **标题**：Claude灾难级大宕机，全球开发者集体炸锅！Anthropic三连翻车被怒喷\n  发布：2026-04-07 | 新智元\n  摘要：Claude新功能Ultraplan上线当天大规模宕机，还存在token狂烧、修改系统提示词报错、2月后性能退化等问题，Anthropic遭开发者怒喷。\n  链接：[查看原文](http://weixin.sogou.com/weixin?type=2&query=...)\n\n- **标题**：用雨伞「钓」无人机？首个针对自主目标跟踪闭环系统的物理攻击\n  发布：2026-04-07 | 新智元\n  摘要：研究者用特制雨伞（FlyTrap）欺骗商用无人机视觉系统，使其误判目标远去致失控，成功率超60%，揭示AI感知安全隐患。\n  链接：[查看原文](http://weixin.sogou.com/weixin?type=2&query=...)\n\n**💡 智能洞察：**\n今日AI领域关注系统稳定性与安全性，Claude宕机事件反映大模型服务可靠性挑战，无人机攻击研究则凸显AI感知系统脆弱性。建议关注模型鲁棒性提升与系统容错设计。`;\n\nreturn { json: { output: report } };"
+      },
+      "id": "generate-daily-report",
+      "name": "生成日报",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5808,
+        1600
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "早晨定时触发(7点)": {
+      "main": [
+        [
+          {
+            "node": "新智元RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "新智元RSS": {
+      "main": [
+        [
+          {
+            "node": "整理字段-新智元",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "36氪RSS": {
+      "main": [
+        [
+          {
+            "node": "整理字段-36氪",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整理字段-新智元": {
+      "main": [
+        [
+          {
+            "node": "限制条数-新智元",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整理字段-36氪": {
+      "main": [
+        [
+          {
+            "node": "限制条数-36氪",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "限制条数-新智元": {
+      "main": [
+        [
+          {
+            "node": "LLM结构化新闻",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "限制条数-36氪": {
+      "main": [
+        [
+          {
+            "node": "LLM结构化-36氪",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM结构化新闻": {
+      "main": [
+        [
+          {
+            "node": "解析LLM输出JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "豆包模型(结构化)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM结构化新闻",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析LLM输出JSON": {
+      "main": [
+        [
+          {
+            "node": "写入飞书多维表格",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM结构化-36氪": {
+      "main": [
+        [
+          {
+            "node": "解析JSON-36氪",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析JSON-36氪": {
+      "main": [
+        [
+          {
+            "node": "写入飞书-36氪",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "豆包模型-36氪": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM结构化-36氪",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写入飞书多维表格": {
+      "main": [
+        [
+          {
+            "node": "36氪RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写入飞书-36氪": {
+      "main": [
+        [
+          {
+            "node": "生成日报",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成日报": {
+      "main": [
+        [
+          {
+            "node": "发送飞书群消息",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ba2e0e54-4f1b-4152-8137-5e30c3b963e8",
+  "meta": {
+    "instanceId": "0239348e9edf7ed31cfc17376721efa9ad4ffa73da1ca9ac197ddaee1ee94e9b"
+  },
+  "id": "QYt4BiXc1bSNPHqM",
+  "tags": []
+}
